@@ -1,0 +1,13 @@
+<h2>Contract Details</h2>
+<div>
+    <p>Address:</p> 
+    <p>{{address}}</p>
+    <p>JSON Interface:</p>
+    <p>{{jsonInterface}}</p>
+</div>
+<h2>All Events</h2>
+<div ng-repeat = "event in events">
+    Name: {{event.event}}
+    Amount: {{event.args.amount}}
+</div>
+
