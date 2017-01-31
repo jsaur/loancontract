@@ -19,10 +19,9 @@ contract LoanContract3 {
     /* Since solidity doesn't all iterating over mapping, we need 2 data structures to represent lender accounts */
     address[] public lenderAddresses;
     mapping(address => LenderAccount) public lenderAccounts;
-    bool delinquent = false;
     enum State {raising, funded, repaying, repaid, expired} //default?
     State public currentState;
-        struct LenderAccount {
+    struct LenderAccount {
         uint amountLent;
         uint amountRepaid;
     }
@@ -77,10 +76,16 @@ contract LoanContract3 {
             throw;
         }
         
-        numLenders++;
+        //Handle lender lending twice
+        if (lenderAccounts[msg.sender].amountLent == 0) {
+            numLenders++;
+            lenderAddresses.push(msg.sender);
+            lenderAccounts[msg.sender] = LenderAccount(msg.value, 0);
+        } else {
+            lenderAccounts[msg.sender].amountLent += msg.value;
+        }
+        
         amountRaised += msg.value;
-        lenderAddresses.push(msg.sender);
-        lenderAccounts[msg.sender] = LenderAccount(msg.value, 0);
         LentToLoan(msg.sender, msg.value);
         checkLoanFunded();
     }
@@ -141,6 +146,10 @@ contract LoanContract3 {
         return loanAmount - amountRepaid;
     }
     
+    function isDelinquent() constant returns (bool) {
+        return (now >= repaymentDeadline && currentState != State.repaid);
+    }
+    
     /* Admin functions, requires the know-how to call a function rather than just sending ether */
     
     // If we are passed the expiration date, send wei back to lenders
@@ -164,14 +173,6 @@ contract LoanContract3 {
                 currentState = State.repaying;
                 DisbursedToBorrower(borrowerAddress, amountRaised);
             } //@todo error case?
-        }
-    }
-    
-    // Mark the loan contract as delinquent if the borrower has not repaid by the deadline
-    function makeDelinquent() {
-        if (now >= repaymentDeadline && currentState != State.repaid) {
-            delinquent = true;
-            LoanBecameDelinquent();
         }
     }
 }
