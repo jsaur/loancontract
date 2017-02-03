@@ -16,7 +16,6 @@ contract LoanContract {
     uint public numLenders;
     uint public amountRaised;
     uint public amountRepaid;
-    uint public repaymentRemainder;
     uint public minimumLendAmount = 500000000000000000;
     /* Since solidity doesn't all iterating over mapping, we need 2 data structures to represent lender accounts */
     address[] public lenderAddresses;
@@ -48,7 +47,7 @@ contract LoanContract {
         borrowerAddress = _borrowerAddress;
         loanAmount = loanAmountInEthers * 1 ether;
         fundRaisingDeadline = now + fundRaisingDurationInDays * 1 days;
-        repaymentDeadline = now + repaymentDurationInDays * 1 days;
+        repaymentDeadline = fundRaisingDeadline + repaymentDurationInDays * 1 days;
     }
 
     // To keep things simple, the default function handles all logic for both lenders and borrowers
@@ -117,8 +116,8 @@ contract LoanContract {
         amountRepaid += msg.value;
         RepaidByBorrower(borrowerAddress, msg.value);
         
-        // Distribute wei evenly to lenders, if there's a remainder save it for next time
-        uint amountToDistribute = msg.value + repaymentRemainder;
+        // Distribute wei evenly to lenders, if there's a remainder we'll distribute at the end
+        uint amountToDistribute = msg.value;
         uint amountDistributed = 0;
         for (uint i = 0; i < lenderAddresses.length; i++) {
             address currentLender = lenderAddresses[i];
@@ -131,7 +130,6 @@ contract LoanContract {
                 } //@todo error case? Perhaps we need an admin withdrawl bucket for unsendable lender repayments
             }
         }
-        repaymentRemainder = amountToDistribute - amountDistributed;
         
         checkLoanRepaid();
     }
@@ -148,8 +146,8 @@ contract LoanContract {
     
     function checkLoanRepaid() private {
         if (amountRepaid == loanAmount) {
-            LoanRepaid();
             currentState = State.repaid;
+            LoanRepaid();
         }
     }
     
